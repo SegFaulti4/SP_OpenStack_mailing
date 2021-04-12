@@ -2,6 +2,9 @@ import openstack
 import logging
 import smtplib
 import yaml
+import argparse
+import getpass
+import keyring
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
@@ -207,10 +210,47 @@ def mail_openstack_resources(logger_config, openstack_config, email_config, outp
     mail_user_resources(logger, user_resources, email_config)
 
 
+def parse_arguments():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-ne", "--newpass_email", required=False, help="Set new email password",
+                        action="store_true")
+    parser.add_argument("-no", "--newpass_openstack", required=False, help="Set new openstack cloud password",
+                        action="store_true")
+    parser.add_argument("-yc", "--yaml_config", help="Set yaml configuration file path",
+                        type=str, default='config.yaml')
+    arguments = parser.parse_args()
+    return arguments
+
+
 def main():
-    with open("config.yaml", "r") as f:
+    args = parse_arguments()
+    filename = args.yaml_config
+
+    with open(filename, "r") as f:
         config = yaml.load(f, Loader=yaml.FullLoader)
 
+    openstack_system_name = 'openstack'
+    email_system_name = 'email'
+    username = 'default'
+
+    if args.newpass_openstack:
+        password = getpass.getpass(prompt="Enter openstack password:")
+        try:
+            keyring.set_password(openstack_system_name, username, password)
+        except Exception as error:
+            print('Error: {}'.format(error))
+
+    if args.newpass_email:
+        password = getpass.getpass(prompt="Enter email password:")
+        try:
+            keyring.set_password(email_system_name, username, password)
+        except Exception as error:
+            print('Error: {}'.format(error))
+
+    if config['clouds']['openstack']['auth'].get('password', None) is None:
+        config['clouds']['openstack']['auth']['password'] = keyring.get_password(openstack_system_name, username)
+    if config['email'].get('password', None) is None:
+        config['email']['password'] = keyring.get_password(email_system_name, username)
     mail_openstack_resources(config['logger'], config['clouds']['openstack'], config['email'], config['output_filter'])
 
 

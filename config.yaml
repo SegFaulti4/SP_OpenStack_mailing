@@ -2,7 +2,6 @@ clouds:
   openstack:
     auth:
       auth_url: https://sky.ispras.ru:13000
-      password: # enter your password here
       project_id: b71e624e352e46979b4ed9fff16759dc
       project_name: challenge
       user_domain_name: Default
@@ -15,7 +14,6 @@ email:
   Subject: OpenStack
   To: makar.popov01@rambler.ru
   host: smtp.rambler.ru:465
-  password: # enter your password here
 logger:
   Formatter: '%(message)s'
   filename: sample.log
