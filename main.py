@@ -1,6 +1,7 @@
 import openstack
 import logging
 import smtplib
+import yaml
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
@@ -53,7 +54,25 @@ def log_resource(logger, resource, res_name, filter_list=None, prop_filter=None,
                         log_security_groups(logger, res[x], prefix_str + '\t')
                 else:
                     logger.info(prefix_str + '\t' + str(x) + ': ' + str(res[x]))
+                    # logger.info("'" + str(x) + "',")
         logger.info('')
+
+
+def log_openstack_resources(logger, openstack_resources, log_filter=None):
+    for res in openstack_resources:
+        log_resource(logger, openstack_resources[res], res, None if log_filter is None else log_filter[res],
+                     prop_filter=None if log_filter is None else log_filter['properties'],
+                     sgr_filter=None if log_filter is None else log_filter['security_group_rules'])
+
+
+def log_user_resources(logger, user_resources, log_filter=None):
+    for name in user_resources:
+        logger.info(name + ':')
+        for res in user_resources[name]:
+            log_resource(logger, user_resources[name][res], res,
+                         None if log_filter is None else log_filter[res], prefix_str='\t',
+                         prop_filter=None if log_filter is None else log_filter['properties'],
+                         sgr_filter=None if log_filter is None else log_filter['security_group_rules'])
 
 
 def sort_servers_by_users(user_resources, servers, userid_to_names):
@@ -100,228 +119,7 @@ def sort_security_groups_by_users(user_resources, security_groups, userid_to_nam
                     user_resources[name]['security_group'].append(sec)
 
 
-def main():
-    with open('sample.log', 'wb'):
-        pass
-
-    logger = logging.getLogger("exampleApp")
-    logger.setLevel(logging.INFO)
-
-    fh = logging.FileHandler("sample.log")
-    formatter = logging.Formatter('%(message)s')
-    fh.setFormatter(formatter)
-    logger.addHandler(fh)
-
-    log_filter = {
-        'image': [
-            'checksum',
-            'container_format',
-            'created_at',
-            'disk_format',
-            'is_hidden',
-            'is_protected',
-            'hash_algo',
-            'hash_value',
-            'min_disk',
-            'min_ram',
-            'size',
-            'store',
-            'status',
-            'updated_at',
-            'virtual_size',
-            'visibility',
-            'file',
-            'locations',
-            'direct_url',
-            'url',
-            'metadata',
-            'architecture',
-            'hypervisor_type',
-            'instance_type_rxtx_factor',
-            'instance_uuid',
-            'needs_config_drive',
-            'kernel_id',
-            'os_distro',
-            'os_version',
-            'needs_secure_boot',
-            'os_shutdown_timeout',
-            'ramdisk_id',
-            'vm_mode',
-            'hw_cpu_sockets',
-            'hw_cpu_cores',
-            'hw_cpu_threads',
-            'hw_disk_bus',
-            'hw_cpu_policy',
-            'hw_cpu_thread_policy',
-            'hw_rng_model',
-            'hw_machine_type',
-            'hw_scsi_model',
-            'hw_serial_port_count',
-            'hw_video_model',
-            'hw_video_ram',
-            'hw_watchdog_action',
-            'os_command_line',
-            'hw_vif_model',
-            'is_hw_vif_multiqueue_enabled',
-            'is_hw_boot_menu_enabled',
-            'vmware_adaptertype',
-            'vmware_ostype',
-            'has_auto_disk_config',
-            'os_type',
-            'os_admin_user',
-            'hw_qemu_guest_agent',
-            'os_require_quiesce',
-            'schema',
-            'location',
-            'tags'
-        ],
-        'security_group': [
-            'created_at',
-            'description',
-            'stateful',
-            'project_id',
-            'updated_at',
-            'revision_number',
-            'location',
-            'tags',
-        ],
-        'volume': [
-            'links',
-            'availability_zone',
-            'source_volume_id',
-            'description',
-            'snapshot_id',
-            'size',
-            'image_id',
-            'is_bootable',
-            'metadata',
-            'volume_image_metadata',
-            'status',
-            'attachments',
-            'created_at',
-            'project_id',
-            'migration_status',
-            'migration_id',
-            'replication_status',
-            'extended_replication_status',
-            'consistency_group_id',
-            'replication_driver_data',
-            'is_encrypted',
-            'location'
-        ],
-        'server': [
-            'links',
-            'access_ipv4',
-            'access_ipv6',
-            'addresses',
-            'admin_password',
-            'attached_volumes',
-            'availability_zone',
-            'block_device_mapping',
-            'config_drive',
-            'created_at',
-            'description',
-            'disk_config',
-            'flavor_id',
-            'flavor',
-            'has_config_drive',
-            'host_status',
-            'hypervisor_hostname',
-            'is_locked',
-            'kernel_id',
-            'launch_index',
-            'launched_at',
-            'metadata',
-            'networks',
-            'personality',
-            'power_state',
-            'progress',
-            'project_id',
-            'ramdisk_id',
-            'reservation_id',
-            'root_device_name',
-            'scheduler_hints',
-            'server_groups',
-            'status',
-            'task_state',
-            'terminated_at',
-            'trusted_image_certificates',
-            'updated_at',
-            'vm_state',
-            'location',
-            'tags',
-            'compute_host',
-            'host_id',
-            'hostname',
-            'image_id',
-            'image',
-            'instance_name',
-            'key_name',
-            'user_data'
-        ],
-        'user': [
-            'default_project_id',
-            'description',
-            'domain_id',
-            'is_enabled',
-            'links',
-            'password',
-            'password_expires_at',
-            'location'
-        ],
-        'properties': [
-            'owner_specified.openstack.md5',
-            'owner_specified.openstack.object',
-            'owner_specified.openstack.sha256',
-            'public',
-            'stores',
-            'project',
-            'project_domain',
-            'isp',
-            'base_image_ref',
-            'boot_roles',
-            'image_location',
-            'image_state',
-            'image_type',
-            'owner_project_name',
-            # 'owner_user_name',
-            # 'user_id',
-            'shared',
-        ],
-        'security_group_rules': [
-            # 'id',
-            'tenant_id',
-            # 'security_group_id',
-            'ethertype',
-            'direction',
-            'protocol',
-            'port_range_min',
-            'port_range_max',
-            'remote_ip_prefix',
-            'remote_group_id',
-            'description',
-            'tags',
-            'created_at',
-            'updated_at',
-            'revision_number',
-            'project_id',
-        ]
-    }
-
-    openstack_resources = {}
-
-    conn = openstack.connection.from_config(cloud="openstack")
-    openstack_resources['image'] = [_ for _ in conn.image.images()]
-    openstack_resources['security_group'] = [_ for _ in conn.network.security_groups()]
-    openstack_resources['volume'] = [_ for _ in conn.block_storage.volumes()]
-    openstack_resources['server'] = [_ for _ in conn.compute.servers()]
-    openstack_resources['user'] = [_ for _ in conn.identity.users()]
-    conn.close()
-
-    for res in openstack_resources:
-        log_resource(logger, openstack_resources[res], res, log_filter[res],
-                     prop_filter=log_filter['properties'], sgr_filter=log_filter['security_group_rules'])
-
+def sort_resources_by_users(openstack_resources):
     user_resources = {}
     userid_to_names = {}
     username_to_emails = {}
@@ -344,19 +142,44 @@ def main():
     sort_volumes_by_users(user_resources, openstack_resources['volume'], userid_to_names)
     sort_images_by_users(user_resources, openstack_resources['image'], userid_to_names)
     sort_security_groups_by_users(user_resources, openstack_resources['security_group'], userid_to_names, applied_sgs)
+    return user_resources
 
-    for name in user_resources:
-        logger.info(name + ':')
-        for res in user_resources[name]:
-            log_resource(logger, user_resources[name][res], res, log_filter[res], prefix_str='\t',
-                         prop_filter=log_filter['properties'], sgr_filter=log_filter['security_group_rules'])
 
-    smtp_obj = smtplib.SMTP_SSL('smtp.rambler.ru:465')
-    smtp_obj.login('makar.popov01@rambler.ru', )
+def init_info_logger(logger_config):
+    with open(logger_config['filename'], 'wb'):
+        pass
+    logger = logging.getLogger("mainLogger")
+    logger.setLevel(logging.INFO)
+    fh = logging.FileHandler(logger_config['filename'])
+    formatter = logging.Formatter(logger_config['Formatter'])
+    fh.setFormatter(formatter)
+    logger.addHandler(fh)
+    return logger
+
+
+def init_openstack_connection(config):
+    return openstack.connection.Connection(region_name=config['region_name'],
+                                           identity_api_version=config['identity_api_version'],
+                                           interface=config['interface'],
+                                           auth=config['auth'])
+
+
+def init_openstack_resources(conn):
+    openstack_resources = {'image': [_ for _ in conn.image.images()],
+                           'security_group': [_ for _ in conn.network.security_groups()],
+                           'volume': [_ for _ in conn.block_storage.volumes()],
+                           'server': [_ for _ in conn.compute.servers()],
+                           'user': [_ for _ in conn.identity.users()]}
+    return openstack_resources
+
+
+def mail_user_resources(logger, user_resources, email_config):
+    smtp_obj = smtplib.SMTP_SSL(email_config['host'])
+    smtp_obj.login(email_config['From'], email_config['password'])
     msg = MIMEMultipart()
-    msg['From'] = 'makar.popov01@rambler.ru'
-    msg['To'] = 'makar.popov01@rambler.ru'
-    msg['Subject'] = 'OpenStack'
+    msg['From'] = email_config['From']
+    msg['To'] = email_config['To']
+    msg['Subject'] = email_config['Subject']
     body = ''
     for name in user_resources:
         body += name + ', your resources in the cloud:'
@@ -367,6 +190,28 @@ def main():
     msg.attach(MIMEText(body, 'plain'))
     # smtp_obj.send_message(msg)
     smtp_obj.quit()
+
+
+def mail_openstack_resources(logger_config, openstack_config, email_config, output_filter=None):
+    logger = init_info_logger(logger_config)
+    log_filter = output_filter
+
+    conn = init_openstack_connection(openstack_config)
+    openstack_resources = init_openstack_resources(conn)
+    conn.close()
+
+    log_openstack_resources(logger, openstack_resources, log_filter)
+    user_resources = sort_resources_by_users(openstack_resources)
+    log_user_resources(logger, user_resources, log_filter)
+
+    mail_user_resources(logger, user_resources, email_config)
+
+
+def main():
+    with open("config.yaml", "r") as f:
+        config = yaml.load(f, Loader=yaml.FullLoader)
+
+    mail_openstack_resources(config['logger'], config['clouds']['openstack'], config['email'], config['output_filter'])
 
 
 if __name__ == '__main__':
