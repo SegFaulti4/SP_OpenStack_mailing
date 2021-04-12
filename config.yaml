@@ -14,6 +14,10 @@ email:
   Subject: OpenStack
   To: makar.popov01@rambler.ru
   host: smtp.rambler.ru:465
+  msg_prefix: 'Hello, '
+  msg_infix: '! Here is list of your resources in sky.ispras.ru cloud'
+  msg_postfix: ''
+  max_msg_per_connection: 3
 logger:
   Formatter: '%(message)s'
   filename: sample.log
@@ -29,9 +33,9 @@ output_filter:
   - hash_value
   - min_disk
   - min_ram
-  - size
+  # - size
   - store
-  - status
+  # - status
   - updated_at
   - virtual_size
   - visibility
@@ -79,17 +83,17 @@ output_filter:
   - schema
   - location
   - tags
-  - name
+  # - name
   - owner
   - owner_id
-  - id
-  - properties
+  # - id
+  # - properties
   properties:
   - owner_specified.openstack.md5
   - owner_specified.openstack.object
   - owner_specified.openstack.sha256
   - public
-  - stores
+  # - stores
   - project
   - project_domain
   - isp
@@ -111,15 +115,15 @@ output_filter:
   - revision_number
   - location
   - tags
-  - name
+  # - name
   - tenant_id
-  - id
-  - security_group_rules
+  # - id
+  # - security_group_rules
   security_group_rules:
   - tenant_id
   - ethertype
-  - direction
-  - protocol
+  # - direction
+  # - protocol
   - port_range_min
   - port_range_max
   - remote_ip_prefix
@@ -163,7 +167,7 @@ output_filter:
   - root_device_name
   - scheduler_hints
   - server_groups
-  - status
+  # - status
   - task_state
   - terminated_at
   - trusted_image_certificates
@@ -176,12 +180,12 @@ output_filter:
   - hostname
   - image_id
   - image
-  - instance_name
+  # - instance_name
   - key_name
   - user_data
   - user_id
-  - id
-  - name
+  # - id
+  # - name
   user:
   - default_project_id
   - description
@@ -191,21 +195,21 @@ output_filter:
   - password
   - password_expires_at
   - location
-  - email
-  - name
-  - id
+  # - email
+  # - name
+  # - id
   volume:
   - links
   - availability_zone
   - source_volume_id
   - description
   - snapshot_id
-  - size
+  # - size
   - image_id
   - is_bootable
   - metadata
   - volume_image_metadata
-  - status
+  # - status
   - attachments
   - created_at
   - project_id
@@ -217,8 +221,8 @@ output_filter:
   - replication_driver_data
   - is_encrypted
   - location
-  - id
-  - name
+  # - id
+  # - name
   - volume_type
   - host
   - user_id

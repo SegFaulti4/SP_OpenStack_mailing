@@ -7,6 +7,7 @@ import getpass
 import keyring
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from io import StringIO
 
 
 def log_properties(logger, properties, prop_filter=None, prefix_str=''):
@@ -125,12 +126,10 @@ def sort_security_groups_by_users(user_resources, security_groups, userid_to_nam
 def sort_resources_by_users(openstack_resources):
     user_resources = {}
     userid_to_names = {}
-    username_to_emails = {}
     applied_sgs = {'name': [], 'id': []}
 
     for user in openstack_resources['user']:
         userid_to_names[user.id] = user.name
-        username_to_emails[user.id] = user.email
         user_resources[user.name] = {'server': [], 'volume': [], 'image': [], 'security_group': []}
 
     for server in openstack_resources['server']:
@@ -176,38 +175,50 @@ def init_openstack_resources(conn):
     return openstack_resources
 
 
-def mail_user_resources(logger, user_resources, email_config):
+def mail_user_resources(logger, user_resources, username_to_emails, email_config, output_filter=None):
+    if email_config.get('msg_prefix', None) is None:
+        email_config['msg_prefix'] = ''
+    if email_config.get('msg_infix', None) is None:
+        email_config['msg_infix'] = ''
+    if email_config.get('msg_postfix', None) is None:
+        email_config['msg_postfix'] = ''
+    if email_config.get('max_msg_per_connection', None) is None:
+        email_config['max_msg_per_connection'] = 3
+
+    msg_sent = 0
     smtp_obj = smtplib.SMTP_SSL(email_config['host'])
     smtp_obj.login(email_config['From'], email_config['password'])
-    msg = MIMEMultipart()
-    msg['From'] = email_config['From']
-    msg['To'] = email_config['To']
-    msg['Subject'] = email_config['Subject']
-    body = ''
+
     for name in user_resources:
-        body += name + ', your resources in the cloud:'
-        for res in user_resources[name]:
-            body += '\n\t' + res + ' :' + str(user_resources[name][res])
-        body += '\n'
-    logger.debug(body)
-    msg.attach(MIMEText(body, 'plain'))
-    # smtp_obj.send_message(msg)
+        msg = MIMEMultipart()
+        msg['From'] = email_config['From']
+        msg['Subject'] = email_config['Subject']
+        if email_config.get('To', None) is not None:
+            msg['To'] = email_config['To']
+        elif username_to_emails.get(name, None) is not None:
+            msg['To'] = username_to_emails[name]
+        if msg.get('To', None) is not None:
+            body_stream = StringIO()
+            tmp_logger = logging.getLogger("tmpLogger")
+            tmp_logger.setLevel(logging.INFO)
+            sh = logging.StreamHandler(body_stream)
+            sh.setFormatter(logging.Formatter('%(message)s'))
+            tmp_logger.addHandler(sh)
+            log_user_resources(tmp_logger, {name + email_config['msg_infix']: user_resources[name]}, output_filter)
+            body = email_config['msg_prefix'] + body_stream.getvalue() + email_config['msg_postfix']
+
+            logger.debug(body)
+            msg.attach(MIMEText(body, 'plain'))
+            smtp_obj.send_message(msg)
+
+            msg_sent += 1
+            if msg_sent > email_config['max_msg_per_connection']:
+                smtp_obj.quit()
+                smtp_obj = smtplib.SMTP_SSL(email_config['host'])
+                smtp_obj.login(email_config['From'], email_config['password'])
+                msg_sent = 0
+
     smtp_obj.quit()
-
-
-def mail_openstack_resources(logger_config, openstack_config, email_config, output_filter=None):
-    logger = init_info_logger(logger_config)
-    log_filter = output_filter
-
-    conn = init_openstack_connection(openstack_config)
-    openstack_resources = init_openstack_resources(conn)
-    conn.close()
-
-    log_openstack_resources(logger, openstack_resources, log_filter)
-    user_resources = sort_resources_by_users(openstack_resources)
-    log_user_resources(logger, user_resources, log_filter)
-
-    mail_user_resources(logger, user_resources, email_config)
 
 
 def parse_arguments():
@@ -220,6 +231,24 @@ def parse_arguments():
                         type=str, default='config.yaml')
     arguments = parser.parse_args()
     return arguments
+
+
+def module(logger_config, openstack_config, email_config, output_filter=None):
+    logger = init_info_logger(logger_config)
+    log_filter = output_filter
+
+    conn = init_openstack_connection(openstack_config)
+    openstack_resources = init_openstack_resources(conn)
+    conn.close()
+
+    log_openstack_resources(logger, openstack_resources, log_filter)
+    user_resources = sort_resources_by_users(openstack_resources)
+    log_user_resources(logger, user_resources, log_filter)
+
+    username_to_emails = {}
+    for user in openstack_resources['user']:
+        username_to_emails[user.id] = user.email
+    mail_user_resources(logger, user_resources, username_to_emails, email_config, output_filter)
 
 
 def main():
@@ -251,7 +280,7 @@ def main():
         config['clouds']['openstack']['auth']['password'] = keyring.get_password(openstack_system_name, username)
     if config['email'].get('password', None) is None:
         config['email']['password'] = keyring.get_password(email_system_name, username)
-    mail_openstack_resources(config['logger'], config['clouds']['openstack'], config['email'], config['output_filter'])
+    module(config['logger'], config['clouds']['openstack'], config['email'], config['output_filter'])
 
 
 if __name__ == '__main__':
